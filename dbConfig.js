@@ -1,6 +1,14 @@
-const knex = require('knex');
-const path = require('path');
-require('dotenv').config({ path: './.env.local' });
+import knex from 'knex';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: './.env.local' });
 
 // SQLite database configuration
 const db = knex({
@@ -17,4 +25,4 @@ const db = knex({
   }
 });
 
-module.exports = db; 
+export default db; 

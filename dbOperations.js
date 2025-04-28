@@ -1,11 +1,15 @@
-const db = require('./dbConfig');
+import db from './dbConfig.js';
 
 // Database operations class
 class DbOperations {
+  constructor() {
+    this.db = db;
+  }
+
   // Get all users
   async getUsers() {
     try {
-      return await db('Users').select('*');
+      return await this.db('Users').select('*');
     } catch (error) {
       console.error('Error getting users:', error);
       throw error;
@@ -15,7 +19,7 @@ class DbOperations {
   // Get user by id
   async getUserById(id) {
     try {
-      return await db('Users').where({ id }).first();
+      return await this.db('Users').where({ id }).first();
     } catch (error) {
       console.error(`Error getting user with id ${id}:`, error);
       throw error;
@@ -25,7 +29,7 @@ class DbOperations {
   // Create a new user
   async createUser(username, email, password) {
     try {
-      const [id] = await db('Users').insert({
+      const [id] = await this.db('Users').insert({
         username,
         email,
         password
@@ -40,7 +44,7 @@ class DbOperations {
   // Create a new conversation
   async createConversation(userId, title) {
     try {
-      const [id] = await db('Conversations').insert({
+      const [id] = await this.db('Conversations').insert({
         user_id: userId,
         title
       });
@@ -54,7 +58,7 @@ class DbOperations {
   // Add message to conversation
   async addMessage(conversationId, content, role) {
     try {
-      const [id] = await db('Messages').insert({
+      const [id] = await this.db('Messages').insert({
         conversation_id: conversationId,
         content,
         role
@@ -70,7 +74,7 @@ class DbOperations {
   async getConversationWithMessages(conversationId) {
     try {
       // Get conversation details
-      const conversation = await db('Conversations as c')
+      const conversation = await this.db('Conversations as c')
         .join('Users as u', 'c.user_id', 'u.id')
         .where('c.id', conversationId)
         .select(
@@ -88,7 +92,7 @@ class DbOperations {
       }
       
       // Get messages for this conversation
-      const messages = await db('Messages')
+      const messages = await this.db('Messages')
         .where('conversation_id', conversationId)
         .orderBy('created_at', 'asc')
         .select('*');
@@ -103,4 +107,4 @@ class DbOperations {
   }
 }
 
-module.exports = new DbOperations(); 
+export default new DbOperations(); 

@@ -1,5 +1,5 @@
-const db = require('./dbConfig');
-const { v4: uuidv4 } = require('uuid');
+import db from './dbConfig.js';
+import { v4 as uuidv4 } from 'uuid';
 
 // Memory operations class
 class MemoryOperations {
@@ -201,37 +201,39 @@ class MemoryOperations {
       // Execute the query
       const experiences = await experiencesQuery;
       
-      // Get tags for all experiences
+      // Collect all experience IDs
       const experienceIds = experiences.map(exp => exp.id);
       
-      if (experienceIds.length > 0) {
-        const allTags = await db('ExperienceTags')
-          .whereIn('experience_id', experienceIds)
-          .select('experience_id', 'tag');
-        
-        // Group tags by experience_id
-        const tagsByExperienceId = {};
-        allTags.forEach(({ experience_id, tag }) => {
-          if (!tagsByExperienceId[experience_id]) {
-            tagsByExperienceId[experience_id] = [];
-          }
-          tagsByExperienceId[experience_id].push(tag);
-        });
-        
-        // Add tags to each experience and parse metadata
-        experiences.forEach(experience => {
-          experience.tags = tagsByExperienceId[experience.id] || [];
-          if (experience.metadata) {
-            try {
-              experience.metadata = JSON.parse(experience.metadata);
-            } catch (e) {
-              console.warn('Failed to parse metadata for experience:', experience.id);
-            }
-          }
-        });
-      }
+      // Get tags for all experiences
+      const allTags = await db('ExperienceTags')
+        .whereIn('experience_id', experienceIds)
+        .select('experience_id', 'tag');
       
-      return experiences;
+      // Group tags by experience ID
+      const tagsByExperienceId = {};
+      allTags.forEach(tagRow => {
+        if (!tagsByExperienceId[tagRow.experience_id]) {
+          tagsByExperienceId[tagRow.experience_id] = [];
+        }
+        tagsByExperienceId[tagRow.experience_id].push(tagRow.tag);
+      });
+      
+      // Add tags to each experience and parse metadata
+      return experiences.map(exp => {
+        // Parse metadata if it exists
+        if (exp.metadata) {
+          try {
+            exp.metadata = JSON.parse(exp.metadata);
+          } catch (e) {
+            console.warn('Failed to parse metadata for experience:', exp.id);
+          }
+        }
+        
+        // Add tags
+        exp.tags = tagsByExperienceId[exp.id] || [];
+        
+        return exp;
+      });
     } catch (error) {
       console.error('Error searching experiences:', error);
       throw error;
@@ -247,10 +249,9 @@ class MemoryOperations {
         relation_type: relationType,
         strength
       });
-      
       return relationId;
     } catch (error) {
-      console.error('Error creating relation:', error);
+      console.error(`Error creating relation between experiences ${sourceId} and ${targetId}:`, error);
       throw error;
     }
   }
@@ -258,55 +259,74 @@ class MemoryOperations {
   // Get related experiences
   async getRelatedExperiences(experienceId, relationType = null) {
     try {
-      // Get experiences related to this experience
-      let query = db('ExperienceRelations')
-        .join('Experiences', 'ExperienceRelations.target_id', 'Experiences.id')
-        .where('ExperienceRelations.source_id', experienceId)
-        .select(
-          'Experiences.*',
-          'ExperienceRelations.relation_type',
-          'ExperienceRelations.strength'
-        );
+      // Base query to get related experiences
+      let relatedQuery = db('ExperienceRelations')
+        .where('source_id', experienceId)
+        .orWhere('target_id', experienceId);
       
-      // Filter by relation type if specified
+      // Filter by relation type if provided
       if (relationType) {
-        query = query.where('ExperienceRelations.relation_type', relationType);
+        relatedQuery = relatedQuery.where('relation_type', relationType);
       }
       
       // Execute the query
-      const relatedExperiences = await query;
+      const relations = await relatedQuery;
       
-      // Get tags for all related experiences
-      const experienceIds = relatedExperiences.map(exp => exp.id);
+      // Get the IDs of related experiences
+      const relatedIds = relations.map(rel => 
+        rel.source_id === experienceId ? rel.target_id : rel.source_id
+      );
       
-      if (experienceIds.length > 0) {
-        const allTags = await db('ExperienceTags')
-          .whereIn('experience_id', experienceIds)
-          .select('experience_id', 'tag');
-        
-        // Group tags by experience_id
-        const tagsByExperienceId = {};
-        allTags.forEach(({ experience_id, tag }) => {
-          if (!tagsByExperienceId[experience_id]) {
-            tagsByExperienceId[experience_id] = [];
-          }
-          tagsByExperienceId[experience_id].push(tag);
-        });
-        
-        // Add tags to each experience and parse metadata
-        relatedExperiences.forEach(experience => {
-          experience.tags = tagsByExperienceId[experience.id] || [];
-          if (experience.metadata) {
-            try {
-              experience.metadata = JSON.parse(experience.metadata);
-            } catch (e) {
-              console.warn('Failed to parse metadata for experience:', experience.id);
-            }
-          }
-        });
+      if (relatedIds.length === 0) {
+        return [];
       }
       
-      return relatedExperiences;
+      // Get the related experiences
+      const relatedExperiences = await db('Experiences')
+        .whereIn('id', relatedIds)
+        .select('*');
+      
+      // Get tags for all related experiences
+      const allTags = await db('ExperienceTags')
+        .whereIn('experience_id', relatedIds)
+        .select('experience_id', 'tag');
+      
+      // Group tags by experience ID
+      const tagsByExperienceId = {};
+      allTags.forEach(tagRow => {
+        if (!tagsByExperienceId[tagRow.experience_id]) {
+          tagsByExperienceId[tagRow.experience_id] = [];
+        }
+        tagsByExperienceId[tagRow.experience_id].push(tagRow.tag);
+      });
+      
+      // Map relations to experiences
+      return relatedExperiences.map(exp => {
+        // Find the relation for this experience
+        const relation = relations.find(rel => 
+          rel.source_id === exp.id || rel.target_id === exp.id
+        );
+        
+        // Parse metadata if it exists
+        if (exp.metadata) {
+          try {
+            exp.metadata = JSON.parse(exp.metadata);
+          } catch (e) {
+            console.warn('Failed to parse metadata for experience:', exp.id);
+          }
+        }
+        
+        // Add tags and relation info
+        return {
+          ...exp,
+          tags: tagsByExperienceId[exp.id] || [],
+          relation: {
+            type: relation.relation_type,
+            strength: relation.strength,
+            direction: relation.source_id === experienceId ? 'outgoing' : 'incoming'
+          }
+        };
+      });
     } catch (error) {
       console.error(`Error getting related experiences for ${experienceId}:`, error);
       throw error;
@@ -320,10 +340,9 @@ class MemoryOperations {
         experience_id: experienceId,
         conversation_id: conversationId
       });
-      
       return true;
     } catch (error) {
-      console.error('Error linking experience to conversation:', error);
+      console.error(`Error linking experience ${experienceId} to conversation ${conversationId}:`, error);
       throw error;
     }
   }
@@ -331,42 +350,48 @@ class MemoryOperations {
   // Get experiences linked to a conversation
   async getExperiencesForConversation(conversationId) {
     try {
-      const experiences = await db('MemoryConversations')
-        .join('Experiences', 'MemoryConversations.experience_id', 'Experiences.id')
+      const experiences = await db('Experiences')
+        .join('MemoryConversations', 'Experiences.id', 'MemoryConversations.experience_id')
         .where('MemoryConversations.conversation_id', conversationId)
         .select('Experiences.*');
       
-      // Get tags for all experiences
-      const experienceIds = experiences.map(exp => exp.id);
-      
-      if (experienceIds.length > 0) {
-        const allTags = await db('ExperienceTags')
-          .whereIn('experience_id', experienceIds)
-          .select('experience_id', 'tag');
-        
-        // Group tags by experience_id
-        const tagsByExperienceId = {};
-        allTags.forEach(({ experience_id, tag }) => {
-          if (!tagsByExperienceId[experience_id]) {
-            tagsByExperienceId[experience_id] = [];
-          }
-          tagsByExperienceId[experience_id].push(tag);
-        });
-        
-        // Add tags to each experience and parse metadata
-        experiences.forEach(experience => {
-          experience.tags = tagsByExperienceId[experience.id] || [];
-          if (experience.metadata) {
-            try {
-              experience.metadata = JSON.parse(experience.metadata);
-            } catch (e) {
-              console.warn('Failed to parse metadata for experience:', experience.id);
-            }
-          }
-        });
+      if (experiences.length === 0) {
+        return [];
       }
       
-      return experiences;
+      // Collect all experience IDs
+      const experienceIds = experiences.map(exp => exp.id);
+      
+      // Get tags for all experiences
+      const allTags = await db('ExperienceTags')
+        .whereIn('experience_id', experienceIds)
+        .select('experience_id', 'tag');
+      
+      // Group tags by experience ID
+      const tagsByExperienceId = {};
+      allTags.forEach(tagRow => {
+        if (!tagsByExperienceId[tagRow.experience_id]) {
+          tagsByExperienceId[tagRow.experience_id] = [];
+        }
+        tagsByExperienceId[tagRow.experience_id].push(tagRow.tag);
+      });
+      
+      // Add tags to each experience and parse metadata
+      return experiences.map(exp => {
+        // Parse metadata if it exists
+        if (exp.metadata) {
+          try {
+            exp.metadata = JSON.parse(exp.metadata);
+          } catch (e) {
+            console.warn('Failed to parse metadata for experience:', exp.id);
+          }
+        }
+        
+        // Add tags
+        exp.tags = tagsByExperienceId[exp.id] || [];
+        
+        return exp;
+      });
     } catch (error) {
       console.error(`Error getting experiences for conversation ${conversationId}:`, error);
       throw error;
@@ -374,4 +399,8 @@ class MemoryOperations {
   }
 }
 
-module.exports = new MemoryOperations(); 
+// Create an instance
+const memoryOperations = new MemoryOperations();
+
+// Export the instance
+export default memoryOperations; 

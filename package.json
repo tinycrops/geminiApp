@@ -2,24 +2,30 @@
   "name": "gemini-app",
   "version": "1.0.0",
   "description": "Gemini App with SQLite Database and Experience Memory",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "setup-db": "node setupDatabase.js",
     "setup-memory": "node setupMemoryDatabase.js",
+    "db:migrate": "node migrations.js",
     "test-db": "node testDb.js",
     "test-memory": "node geminiMemory.js testMemoryChat",
-    "start": "node server.js"
+    "start": "node server.js",
+    "demo": "node geminiDemo.js",
+    "replay": "node replayScheduler.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.2.1",
+    "@google/genai": "^0.10.0",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "knex": "^3.1.0",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0",
     "pdf-parse": "^1.1.1",
-    "sqlite3": "^5.1.6",
+    "sqlite3": "^5.1.7",
     "uuid": "^9.0.1"
   }
 }

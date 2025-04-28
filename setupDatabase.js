@@ -1,4 +1,4 @@
-const db = require('./dbConfig');
+import db from './dbConfig.js';
 
 // Function to create the database tables
 async function setupDatabase() {

@@ -1,0 +1,249 @@
+[
+  {
+    "name": "searchExperiences",
+    "description": "Search for experiences in Gemini's memory based on text or tags",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "query": {
+          "type": "STRING",
+          "description": "Text to search for in experience title, description, or context"
+        },
+        "tags": {
+          "type": "ARRAY",
+          "items": {
+            "type": "STRING"
+          },
+          "description": "Tags to filter experiences by"
+        },
+        "limit": {
+          "type": "NUMBER",
+          "description": "Maximum number of experiences to return (default: 10)"
+        }
+      }
+    }
+  },
+  {
+    "name": "getExperienceById",
+    "description": "Get an experience from memory by its ID",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "id": {
+          "type": "STRING",
+          "description": "The experience_id of the experience to retrieve"
+        }
+      },
+      "required": ["id"]
+    }
+  },
+  {
+    "name": "createExperience",
+    "description": "Create a new experience in memory",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "title": {
+          "type": "STRING",
+          "description": "Title of the experience"
+        },
+        "description": {
+          "type": "STRING",
+          "description": "Detailed description of the experience"
+        },
+        "context": {
+          "type": "STRING",
+          "description": "Additional context about the experience"
+        },
+        "tags": {
+          "type": "ARRAY",
+          "items": {
+            "type": "STRING"
+          },
+          "description": "Tags to categorize the experience"
+        },
+        "importance": {
+          "type": "NUMBER",
+          "description": "Importance rating of the experience (1-10)"
+        },
+        "metadata": {
+          "type": "OBJECT",
+          "description": "Additional metadata about the experience"
+        }
+      },
+      "required": ["title", "description"]
+    }
+  },
+  {
+    "name": "updateExperience",
+    "description": "Update an existing experience in memory",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "id": {
+          "type": "STRING",
+          "description": "The experience_id of the experience to update"
+        },
+        "title": {
+          "type": "STRING",
+          "description": "Title of the experience"
+        },
+        "description": {
+          "type": "STRING",
+          "description": "Detailed description of the experience"
+        },
+        "context": {
+          "type": "STRING",
+          "description": "Additional context about the experience"
+        },
+        "tags": {
+          "type": "ARRAY",
+          "items": {
+            "type": "STRING"
+          },
+          "description": "Tags to categorize the experience"
+        },
+        "importance": {
+          "type": "NUMBER",
+          "description": "Importance rating of the experience (1-10)"
+        },
+        "metadata": {
+          "type": "OBJECT",
+          "description": "Additional metadata about the experience"
+        }
+      },
+      "required": ["id"]
+    }
+  },
+  {
+    "name": "findRelatedExperiences",
+    "description": "Find experiences related to a given experience",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "id": {
+          "type": "STRING",
+          "description": "The experience_id of the experience to find relations for"
+        },
+        "relationType": {
+          "type": "STRING",
+          "description": "Type of relation to filter by (optional)"
+        }
+      },
+      "required": ["id"]
+    }
+  },
+  {
+    "name": "createRelation",
+    "description": "Create a relation between two experiences",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "sourceId": {
+          "type": "STRING",
+          "description": "The experience_id of the source experience"
+        },
+        "targetId": {
+          "type": "STRING",
+          "description": "The experience_id of the target experience"
+        },
+        "relationType": {
+          "type": "STRING",
+          "description": "Type of relation (e.g., \"similar\", \"contradicts\", \"builds_upon\")"
+        },
+        "strength": {
+          "type": "NUMBER",
+          "description": "Strength of the relation (0-1)"
+        }
+      },
+      "required": ["sourceId", "targetId", "relationType"]
+    }
+  },
+  {
+    "name": "linkToConversation",
+    "description": "Link an experience to a conversation",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "experienceId": {
+          "type": "STRING",
+          "description": "The experience_id of the experience to link"
+        },
+        "conversationId": {
+          "type": "NUMBER",
+          "description": "The ID of the conversation to link to"
+        }
+      },
+      "required": ["experienceId", "conversationId"]
+    }
+  },
+  {
+    "name": "getConversationExperiences",
+    "description": "Get experiences linked to a conversation",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "conversationId": {
+          "type": "NUMBER",
+          "description": "The ID of the conversation to get experiences for"
+        }
+      },
+      "required": ["conversationId"]
+    }
+  },
+  {
+    "name": "EXECUTE_CODE",
+    "description": "Execute a code snippet in a sandboxed environment",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "language": {
+          "type": "STRING",
+          "description": "The programming language (e.g., 'javascript', 'python', 'bash')",
+          "enum": ["javascript", "python", "bash", "nodejs"]
+        },
+        "code": {
+          "type": "STRING",
+          "description": "The code snippet to execute"
+        }
+      },
+      "required": ["language", "code"]
+    }
+  },
+  {
+    "name": "WEB_SEARCH",
+    "description": "Search the web for relevant information",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "query": {
+          "type": "STRING", 
+          "description": "The search query"
+        },
+        "numResults": {
+          "type": "NUMBER",
+          "description": "Number of results to return (default: 5)"
+        }
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "SQL_RUNNER",
+    "description": "Execute SQL queries against the agent's database",
+    "parameters": {
+      "type": "OBJECT",
+      "properties": {
+        "query": {
+          "type": "STRING",
+          "description": "The SQL query to execute"
+        },
+        "database": {
+          "type": "STRING",
+          "description": "The database to query (default: 'memory')"
+        }
+      },
+      "required": ["query"]
+    }
+  }
+] 

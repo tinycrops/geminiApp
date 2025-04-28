@@ -1,4 +1,4 @@
-const db = require('./dbConfig');
+import db from './dbConfig.js';
 
 // Function to create the memory tables
 async function setupMemoryDatabase() {
@@ -66,6 +66,88 @@ async function setupMemoryDatabase() {
         table.foreign('experience_id').references('id').inTable('Experiences').onDelete('CASCADE');
         table.foreign('conversation_id').references('id').inTable('Conversations').onDelete('CASCADE');
         table.unique(['experience_id', 'conversation_id']); // Prevent duplicates
+      });
+    }
+    
+    // Era of Experience tables
+    
+    // Check if Streams table exists
+    const streamsTableExists = await db.schema.hasTable('Streams');
+    
+    if (!streamsTableExists) {
+      console.log('Creating Streams table...');
+      await db.schema.createTable('Streams', table => {
+        table.string('stream_id').primary();
+        table.string('user_id').notNullable().defaultTo('default_user');
+        table.timestamp('start_ts').defaultTo(db.fn.now());
+        table.timestamp('last_active_ts').defaultTo(db.fn.now());
+        table.string('status', 50).notNullable().defaultTo('active');
+      });
+    }
+    
+    // Check if Episodes table exists
+    const episodesTableExists = await db.schema.hasTable('Episodes');
+    
+    if (!episodesTableExists) {
+      console.log('Creating Episodes table...');
+      await db.schema.createTable('Episodes', table => {
+        table.string('episode_id').primary();
+        table.string('stream_id').notNullable();
+        table.timestamp('start_ts').defaultTo(db.fn.now());
+        table.timestamp('end_ts').nullable();
+        table.float('salience_score').defaultTo(0);
+        table.text('metadata').nullable(); // JSON string for additional metadata
+        table.foreign('stream_id').references('stream_id').inTable('Streams').onDelete('CASCADE');
+      });
+    }
+    
+    // Check if EpisodesBuffer table exists
+    const episodesBufferTableExists = await db.schema.hasTable('EpisodesBuffer');
+    
+    if (!episodesBufferTableExists) {
+      console.log('Creating EpisodesBuffer table...');
+      await db.schema.createTable('EpisodesBuffer', table => {
+        table.increments('id').primary();
+        table.string('episode_id').notNullable();
+        table.string('role', 50).notNullable();
+        table.text('content').notNullable();
+        table.timestamp('ts').defaultTo(db.fn.now());
+        table.foreign('episode_id').references('episode_id').inTable('Episodes').onDelete('CASCADE');
+      });
+    }
+    
+    // Check if ToolObservations table exists
+    const toolObservationsTableExists = await db.schema.hasTable('ToolObservations');
+    
+    if (!toolObservationsTableExists) {
+      console.log('Creating ToolObservations table...');
+      await db.schema.createTable('ToolObservations', table => {
+        table.increments('id').primary();
+        table.string('stream_id').notNullable();
+        table.string('episode_id').notNullable();
+        table.string('tool', 100).notNullable();
+        table.text('args').notNullable(); // JSON string of arguments
+        table.text('result').nullable(); // Output of tool
+        table.text('error').nullable(); // Error if any
+        table.timestamp('ts').defaultTo(db.fn.now());
+        table.foreign('stream_id').references('stream_id').inTable('Streams').onDelete('CASCADE');
+        table.foreign('episode_id').references('episode_id').inTable('Episodes').onDelete('CASCADE');
+      });
+    }
+    
+    // Check if Rewards table exists
+    const rewardsTableExists = await db.schema.hasTable('Rewards');
+    
+    if (!rewardsTableExists) {
+      console.log('Creating Rewards table...');
+      await db.schema.createTable('Rewards', table => {
+        table.increments('id').primary();
+        table.string('stream_id').notNullable();
+        table.string('source', 50).notNullable().defaultTo('human'); // enum: intrinsic|extrinsic|human
+        table.string('signal', 100).nullable();
+        table.float('value').notNullable().defaultTo(0);
+        table.timestamp('ts').defaultTo(db.fn.now());
+        table.foreign('stream_id').references('stream_id').inTable('Streams').onDelete('CASCADE');
       });
     }
     
